@@ -1,6 +1,5 @@
 const YOUTUBE_CHAT_RUNNER_URL = process.env.YOUTUBE_CHAT_RUNNER_URL;
 const YOUTUBE_RUNNER_SECRET = process.env.YOUTUBE_RUNNER_SECRET;
-const STR_ID = Number(process.env.STR_ID || 1);
 
 if (!YOUTUBE_CHAT_RUNNER_URL) throw new Error("Missing YOUTUBE_CHAT_RUNNER_URL");
 if (!YOUTUBE_RUNNER_SECRET) throw new Error("Missing YOUTUBE_RUNNER_SECRET");
@@ -15,9 +14,9 @@ async function runYouTubeChatRunner() {
         "Content-Type": "application/json",
         "x-runner-secret": YOUTUBE_RUNNER_SECRET
       },
-      body: JSON.stringify({
-        str_id: STR_ID
-      })
+
+      // No str_id = process ALL YouTube streamers
+      body: JSON.stringify({})
     });
 
     const payload = await res.json().catch(() => ({}));
@@ -28,23 +27,36 @@ async function runYouTubeChatRunner() {
       return;
     }
 
-    const summary = payload?.summaries?.[0];
+    const summaries = payload?.summaries || [];
 
-    if (summary?.live) {
-      delayMs = Number(summary.polling_interval_ms || 2000);
-      delayMs = Math.max(delayMs, 1000);
-      delayMs = Math.min(delayMs, 10_000);
+    const liveStreams =
+      summaries.filter(s => s.live);
 
-      console.log("YouTube chat checked:", {
-        live: true,
-        messages: summary.message_count,
-        new: summary.new_message_count,
-        nextPollMs: delayMs
-      });
+    if (liveStreams.length > 0) {
+
+      const lowestPoll =
+        Math.min(
+          ...liveStreams.map(
+            s => Number(s.polling_interval_ms || 2000)
+          )
+        );
+
+      delayMs = Math.max(1000, lowestPoll);
+      delayMs = Math.min(10000, delayMs);
+
+      console.log(
+        `Checked ${summaries.length} streamers, ${liveStreams.length} live`
+      );
+
     } else {
+
       delayMs = 30_000;
-      console.log("YouTube not live. Checking again in 30s.");
+
+      console.log(
+        `Checked ${summaries.length} streamers, none live`
+      );
     }
+
   } catch (err) {
     console.error("YouTube chat worker error:", err);
     delayMs = 10_000;
