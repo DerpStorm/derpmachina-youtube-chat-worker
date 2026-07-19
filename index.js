@@ -5,6 +5,7 @@ if (!YOUTUBE_CHAT_RUNNER_URL) throw new Error("Missing YOUTUBE_CHAT_RUNNER_URL")
 if (!YOUTUBE_RUNNER_SECRET) throw new Error("Missing YOUTUBE_RUNNER_SECRET");
 
 let delayMs = 2000;
+const MIN_LIVE_POLL_MS = 10_000;
 
 async function runYouTubeChatRunner() {
   try {
@@ -41,7 +42,7 @@ async function runYouTubeChatRunner() {
           )
         );
 
-      delayMs = Math.max(1000, lowestPoll);
+      delayMs = Math.max(MIN_LIVE_POLL_MS, lowestPoll);
       delayMs = Math.min(10000, delayMs);
 
       console.log(
